@@ -6,30 +6,48 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-properties([
-  // Poll every minute
-  pipelineTriggers([pollSCM('* * * * *')]),
-])
-
-////////////////////////////////////////////////////////////////////////////////
-
 pipeline {
-  agent { label 'built-in' }
+  agent any
+  triggers {
+    pollSCM '* * * * *'
+  }
   options {
-    timestamps ()
-    buildDiscarder(logRotator(artifactNumToKeepStr: '10', numToKeepStr: '10'))
+    timestamps()
+    disableConcurrentBuilds()
+    buildDiscarder logRotator(artifactNumToKeepStr: '10', numToKeepStr: '100')
   }
   stages {
-    stage('Configure target repo') {
+    stage('Checkout') {
       steps {
-        script {
-          SCM = git(url: 'https://github.com/henrirosten/ghaf', branch: 'main')
+        dir('ghaf') {
+          checkout scmGit(
+            branches: [[name: 'main']],
+            extensions: [cleanBeforeCheckout()],
+            userRemoteConfigs: [[url: 'https://github.com/tiiuae/ghaf.git']]
+          )
         }
       }
     }
-    stage('Build on x86_64 (main)') {
+    stage('Build on x86_64') {
       steps {
-        sh 'echo "Would start x86_64 build here"'
+        dir('ghaf') {
+          sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-agx-debug-from-x86_64'
+          sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-nx-debug-from-x86_64'
+          sh 'nix build -L .#packages.x86_64-linux.generic-x86_64-debug'
+          sh 'nix build -L .#packages.x86_64-linux.lenovo-x1-carbon-gen11-debug'
+          sh 'nix build -L .#packages.riscv64-linux.microchip-icicle-kit-debug'
+          sh 'nix build -L .#packages.x86_64-linux.doc'
+        }
+      }
+    }
+    stage('Build on aarch64') {
+      steps {
+        dir('ghaf') {
+          sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-agx-debug'
+          sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-nx-debug'
+          sh 'nix build -L .#packages.aarch64-linux.imx8qm-mek-debug'
+          sh 'nix build -L .#packages.aarch64-linux.doc'
+        }
       }
     }
   }
