@@ -7,7 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 properties([
-  githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/henrirosten/ghaf/'),
+  githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/tiiuae/ghaf/'),
   // The following options are documented in:
   // https://www.jenkins.io/doc/pipeline/steps/params/pipelinetriggers/
   // Following config requires having github credentials configured in:
@@ -38,7 +38,7 @@ pipeline {
     stage('Configure target repo') {
       steps {
         script {
-          SCM = git(url: 'https://github.com/henrirosten/ghaf', branch: 'main')
+          SCM = git(url: 'https://github.com/tiiuae/ghaf', branch: 'main')
         }
       }
     }
