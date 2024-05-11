@@ -42,20 +42,21 @@ pipeline {
         }
       }
     }
-    stage('Init') {
-      steps {
-        sh 'set | grep GITHUB'
-        sh 'if [ -z "$GITHUB_PR_HEAD_SHA" ]; then exit 1; fi'
-        sh 'if [ -z "$GITHUB_PR_URL" ]; then exit 1; fi'
-        sh 'if [ -z "$GITHUB_PR_NUMBER" ]; then exit 1; fi'
-      }
-    }
     stage('Checkout') {
       steps {
+        sh 'set | grep GITHUB_PR'
+        sh 'if [ -z "$GITHUB_PR_HEAD_SHA" ]; then exit 1; fi'
+        sh 'if [ -z "$GITHUB_PR_NUMBER" ]; then exit 1; fi'
+        sh 'if [ -z "$GITHUB_PR_TARGET_BRANCH" ]; then exit 1; fi'
         sh 'rm -rf pr'
-        sh 'git clone $(echo $GITHUB_PR_URL | sed "s|/pull/$GITHUB_PR_NUMBER||g") pr'
+        sh 'git clone https://github.com/tiiuae/ghaf pr'
         dir('pr') {
+          sh 'git fetch origin pull/$GITHUB_PR_NUMBER/head:pr_branch'
           sh 'git checkout -q $GITHUB_PR_HEAD_SHA'
+          // Rebase on top of the target branch
+          sh 'git config user.email "foo@bar.com"; git config user.name "Foo Bar"'
+          sh 'git rebase origin/$GITHUB_PR_TARGET_BRANCH'
+          sh 'git log --oneline -n20'
         }
       }
     }
@@ -77,7 +78,7 @@ pipeline {
           sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-nx-debug-from-x86_64'
           sh 'nix build -L .#packages.x86_64-linux.lenovo-x1-carbon-gen11-debug'
           sh 'nix build -L .#packages.riscv64-linux.microchip-icicle-kit-debug'
-          sh 'nix build -L .#packages.doc'
+          sh 'nix build -L .#packages.x86_64-linux.doc'
         }
       }
     }
