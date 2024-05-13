@@ -87,7 +87,6 @@ pipeline {
         dir('pr') {
           sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-agx-debug'
           sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-nx-debug'
-          sh 'nix build -L .#packages.aarch64-linux.imx8qm-mek-debug'
           sh 'nix build -L .#packages.aarch64-linux.doc'
         }
       }
