@@ -19,6 +19,7 @@ properties([
       events: [Open(), commitChanged()],
       abortRunning: true,
       cancelQueued: true,
+      preStatus: true,
       skipFirstRun: true,
       userRestriction: [users: '', orgs: 'tiiuae'],
     )
@@ -64,7 +65,7 @@ pipeline {
         script {
           setGitHubPullRequestStatus(
             state: 'PENDING',
-            context: 'jenkins/pre-merge-pipeline',
+            context: 'ghaf-pre-merge-pipeline',
             message: 'Build started',
           )
         }
@@ -101,7 +102,7 @@ pipeline {
         echo 'Build passed, setting PR status SUCCESS'
         setGitHubPullRequestStatus(
           state: 'SUCCESS',
-          context: 'jenkins/pre-merge-pipeline',
+          context: 'ghaf-pre-merge-pipeline',
           message: 'Build passed',
         )
       }
@@ -111,7 +112,7 @@ pipeline {
         echo 'Build failed, setting PR status FAILURE'
         setGitHubPullRequestStatus(
           state: 'FAILURE',
-          context: 'jenkins/pre-merge-pipeline',
+          context: 'ghaf-pre-merge-pipeline',
           message: 'Build failed',
         )
       }
