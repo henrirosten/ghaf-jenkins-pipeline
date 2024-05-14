@@ -12,7 +12,6 @@ properties([
   // https://www.jenkins.io/doc/pipeline/steps/params/pipelinetriggers/
   // Following config requires having github credentials configured in:
   // 'Manage Jenkins' > 'System' > 'Github' > 'GitHub Server' > 'Credentials'.
-  // Needs at least read/write access to commit statuses and pull requests.
   pipelineTriggers([
     githubPullRequests(
       spec: '* * * * *',
@@ -71,23 +70,27 @@ pipeline {
         }
       }
     }
-    stage('Build on x86_64') {
-      steps {
-        dir('pr') {
-          sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-agx-debug-from-x86_64'
-          sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-nx-debug-from-x86_64'
-          sh 'nix build -L .#packages.x86_64-linux.lenovo-x1-carbon-gen11-debug'
-          sh 'nix build -L .#packages.riscv64-linux.microchip-icicle-kit-debug'
-          sh 'nix build -L .#packages.x86_64-linux.doc'
+    stage("Build") {
+      parallel {
+        stage('x86_64') {
+          steps {
+            dir('pr') {
+              sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-agx-debug-from-x86_64'
+              sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-nx-debug-from-x86_64'
+              sh 'nix build -L .#packages.x86_64-linux.lenovo-x1-carbon-gen11-debug'
+              sh 'nix build -L .#packages.riscv64-linux.microchip-icicle-kit-debug'
+              sh 'nix build -L .#packages.x86_64-linux.doc'
+            }
+          }
         }
-      }
-    }
-    stage('Build on aarch64') {
-      steps {
-        dir('pr') {
-          sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-agx-debug'
-          sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-nx-debug'
-          sh 'nix build -L .#packages.aarch64-linux.doc'
+        stage('aarch64') {
+          steps {
+            dir('pr') {
+              sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-agx-debug'
+              sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-nx-debug'
+              sh 'nix build -L .#packages.aarch64-linux.doc'
+            }
+          }
         }
       }
     }
@@ -103,7 +106,7 @@ pipeline {
         )
       }
     }
-    failure {
+    unsuccessful {
       script {
         echo 'Build failed, setting PR status FAILURE'
         setGitHubPullRequestStatus(
