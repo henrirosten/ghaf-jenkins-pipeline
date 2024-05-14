@@ -44,14 +44,14 @@ pipeline {
     stage('Checkout') {
       steps {
         sh 'set | grep GITHUB_PR'
-        sh 'if [ -z "$GITHUB_PR_HEAD_SHA" ]; then exit 1; fi'
         sh 'if [ -z "$GITHUB_PR_NUMBER" ]; then exit 1; fi'
         sh 'if [ -z "$GITHUB_PR_TARGET_BRANCH" ]; then exit 1; fi'
         sh 'rm -rf pr'
         sh 'git clone https://github.com/tiiuae/ghaf pr'
         dir('pr') {
           sh 'git fetch origin pull/$GITHUB_PR_NUMBER/head:pr_branch'
-          sh 'git checkout -q $GITHUB_PR_HEAD_SHA'
+          sh 'git checkout -q pr_branch'
+          sh 'git log -n1'
           // Rebase on top of the target branch
           sh 'git config user.email "foo@bar.com"; git config user.name "Foo Bar"'
           sh 'git rebase origin/$GITHUB_PR_TARGET_BRANCH'
