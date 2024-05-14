@@ -17,7 +17,7 @@ properties([
       spec: '* * * * *',
       triggerMode: 'CRON',
       events: [Open(), commitChanged()],
-      abortRunning: false,
+      abortRunning: true,
       cancelQueued: true,
       skipFirstRun: true,
       userRestriction: [users: '', orgs: 'tiiuae'],
