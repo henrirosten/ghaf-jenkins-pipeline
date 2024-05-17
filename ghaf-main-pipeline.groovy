@@ -6,6 +6,24 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+def nix_build(flakeref) {
+  try {
+    sh "nix build -L ${flakeref}"
+  } catch (Exception e) {
+    // Mark the current step unstable
+    unstable("Failed: ${flakeref}")
+  }
+}
+
+def set_result() {
+  if(currentBuild.result == "UNSTABLE") {
+    // Fail the build if any step set the unstable status
+    currentBuild.result = "FAILURE"
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 pipeline {
   agent any
   triggers {
@@ -33,24 +51,29 @@ pipeline {
         stage('x86_64') {
           steps {
             dir('ghaf') {
-              sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-agx-debug-from-x86_64'
-              sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-nx-debug-from-x86_64'
-              sh 'nix build -L .#packages.x86_64-linux.lenovo-x1-carbon-gen11-debug'
-              sh 'nix build -L .#packages.riscv64-linux.microchip-icicle-kit-debug'
-              sh 'nix build -L .#packages.x86_64-linux.doc'
+              nix_build('.#packages.x86_64-linux.nvidia-jetson-orin-agx-debug-from-x86_64')
+              nix_build('.#packages.x86_64-linux.nvidia-jetson-orin-nx-debug-from-x86_64')
+              nix_build('.#packages.x86_64-linux.lenovo-x1-carbon-gen11-debug')
+              nix_build('.#packages.riscv64-linux.microchip-icicle-kit-debug')
+              nix_build('.#packages.x86_64-linux.doc')
             }
           }
         }
         stage('aarch64') {
           steps {
             dir('ghaf') {
-              sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-agx-debug'
-              sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-nx-debug'
-              sh 'nix build -L .#packages.aarch64-linux.doc'
+              nix_build('.#packages.aarch64-linux.nvidia-jetson-orin-agx-debug')
+              nix_build('.#packages.aarch64-linux.nvidia-jetson-orin-nx-debug')
+              nix_build('.#packages.aarch64-linux.doc')
             }
           }
         }
       }
+    }
+  }
+  post {
+    always {
+      set_result()
     }
   }
 }
