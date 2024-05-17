@@ -28,25 +28,27 @@ pipeline {
         }
       }
     }
-    stage('Build on x86_64') {
-      steps {
-        dir('ghaf') {
-          sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-agx-debug-from-x86_64'
-          sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-nx-debug-from-x86_64'
-          sh 'nix build -L .#packages.x86_64-linux.generic-x86_64-debug'
-          sh 'nix build -L .#packages.x86_64-linux.lenovo-x1-carbon-gen11-debug'
-          sh 'nix build -L .#packages.riscv64-linux.microchip-icicle-kit-debug'
-          sh 'nix build -L .#packages.x86_64-linux.doc'
+    stage("Build") {
+      parallel {
+        stage('x86_64') {
+          steps {
+            dir('ghaf') {
+              sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-agx-debug-from-x86_64'
+              sh 'nix build -L .#packages.x86_64-linux.nvidia-jetson-orin-nx-debug-from-x86_64'
+              sh 'nix build -L .#packages.x86_64-linux.lenovo-x1-carbon-gen11-debug'
+              sh 'nix build -L .#packages.riscv64-linux.microchip-icicle-kit-debug'
+              sh 'nix build -L .#packages.x86_64-linux.doc'
+            }
+          }
         }
-      }
-    }
-    stage('Build on aarch64') {
-      steps {
-        dir('ghaf') {
-          sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-agx-debug'
-          sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-nx-debug'
-          sh 'nix build -L .#packages.aarch64-linux.imx8qm-mek-debug'
-          sh 'nix build -L .#packages.aarch64-linux.doc'
+        stage('aarch64') {
+          steps {
+            dir('ghaf') {
+              sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-agx-debug'
+              sh 'nix build -L .#packages.aarch64-linux.nvidia-jetson-orin-nx-debug'
+              sh 'nix build -L .#packages.aarch64-linux.doc'
+            }
+          }
         }
       }
     }
