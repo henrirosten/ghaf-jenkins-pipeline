@@ -8,16 +8,17 @@
 
 def nix_build(flakeref) {
   try {
-    sh "nix build -L ${flakeref}"
+    sh "nix build ${flakeref}"
   } catch (Exception e) {
-    // Mark the current step unstable
-    unstable("Failed: ${flakeref}")
+    // If the command fails, mark the current step unstable, but don't fail
+    // (interrupt) the pipeline execution
+    unstable("nix build FAILED: ${flakeref}")
   }
 }
 
 def set_result() {
   if(currentBuild.result == "UNSTABLE") {
-    // Fail the build if any step set the unstable status
+    // Fail the build if any step has set the unstable status
     currentBuild.result = "FAILURE"
   }
 }
@@ -25,20 +26,26 @@ def set_result() {
 ////////////////////////////////////////////////////////////////////////////////
 
 properties([
-  githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/tiiuae/ghaf/'),
+  githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/henrirosten/ghaf/'),
   // The following options are documented in:
   // https://www.jenkins.io/doc/pipeline/steps/params/pipelinetriggers/
-  // Following config requires having github credentials configured in:
+  // Following config requires having github token configured in:
   // 'Manage Jenkins' > 'System' > 'Github' > 'GitHub Server' > 'Credentials'.
+  // Token needs to be 'classic' with 'repo' scope to be able to both set the
+  // commit statuses and read commit author organization.
+  // 'HEAVY_HOOKS' requires webhooks configured properly in the target
+  // github repository. If webhooks cannot be used, consider using polling by
+  // replacing 'HEAVY_HOOKS' with 'CRON' and declaring the poll intervall in
+  // 'spec'.
   pipelineTriggers([
     githubPullRequests(
-      spec: '* * * * *',
-      triggerMode: 'CRON',
+      spec: '',
+      triggerMode: 'HEAVY_HOOKS',
       events: [Open(), commitChanged()],
       abortRunning: true,
       cancelQueued: true,
       preStatus: true,
-      skipFirstRun: true,
+      skipFirstRun: false,
       userRestriction: [users: '', orgs: 'tiiuae'],
     )
   ])
@@ -53,38 +60,59 @@ pipeline {
     buildDiscarder(logRotator(artifactNumToKeepStr: '5', numToKeepStr: '100'))
   }
   stages {
-    stage('Configure target repo') {
+    stage('Checkenv') {
       steps {
-        script {
-          SCM = git(url: 'https://github.com/tiiuae/ghaf', branch: 'main')
-        }
+        sh 'set | grep -P "(GITHUB_PR|BUILD_|JOB_)"'
+        // Fail if this build was not triggered by a PR
+        sh 'if [ -z "$GITHUB_PR_NUMBER" ]; then exit 1; fi'
+        sh 'if [ -z "$GITHUB_PR_TARGET_BRANCH" ]; then exit 1; fi'
+        // Fail if environment is otherwise unexpected
+        sh 'if [ -z "$JOB_BASE_NAME" ]; then exit 1; fi'
+        sh 'if [ -z "$BUILD_NUMBER" ]; then exit 1; fi'
       }
     }
     stage('Checkout') {
       steps {
-        sh 'set | grep GITHUB_PR'
-        sh 'if [ -z "$GITHUB_PR_NUMBER" ]; then exit 1; fi'
-        sh 'if [ -z "$GITHUB_PR_TARGET_BRANCH" ]; then exit 1; fi'
-        sh 'rm -rf pr'
-        sh 'git clone https://github.com/tiiuae/ghaf pr'
         dir('pr') {
-          sh 'git fetch origin pull/$GITHUB_PR_NUMBER/head:pr_branch'
-          sh 'git checkout -q pr_branch'
-          sh 'git log -n1'
-          // Rebase on top of the target branch
-          sh 'git config user.email "foo@bar.com"; git config user.name "Foo Bar"'
-          sh 'git rebase origin/$GITHUB_PR_TARGET_BRANCH'
-          sh 'git log --oneline -n20'
+          // References:
+          // https://www.jenkins.io/doc/pipeline/steps/params/scmgit/#scmgit
+          // https://github.com/KostyaSha/github-integration-plugin/blob/master/docs/Configuration.adoc
+          checkout scmGit(
+            userRemoteConfigs: [[
+              url: 'https://github.com/henrirosten/ghaf.git',
+              name: 'origin',
+              // We use '/merge' to build the PR as if it was merged to
+              // GITHUB_PR_TARGET_BRANCH. To build the PR head (without merge)
+              // you would replace '/merge' with '/head'
+              refspec: '+refs/pull/${GITHUB_PR_NUMBER}/merge:refs/remotes/origin/pull/${GITHUB_PR_NUMBER}/merge',
+            ]],
+            branches: [[name: 'origin/pull/${GITHUB_PR_NUMBER}/merge']],
+            extensions: [
+              cleanBeforeCheckout(),
+              // We use the 'changelogToBranch' extension to correctly
+              // show the PR changed commits in Jenkins changes.
+              // References:
+              // https://issues.jenkins.io/browse/JENKINS-26354
+              // https://javadoc.jenkins.io/plugin/git/hudson/plugins/git/extensions/impl/ChangelogToBranch.html
+              changelogToBranch (
+                options: [
+                  compareRemote: 'origin',
+                  compareTarget: "${GITHUB_PR_TARGET_BRANCH}"
+                ]
+              )
+            ],
+          )
         }
       }
     }
     stage('Set PR status pending') {
       steps {
         script {
+          // https://www.jenkins.io/doc/pipeline/steps/github-pullrequest/
           setGitHubPullRequestStatus(
             state: 'PENDING',
-            context: 'ghaf-pre-merge-pipeline',
-            message: 'Build started',
+            context: "${JOB_BASE_NAME}",
+            message: "Build #${BUILD_NUMBER} started",
           )
         }
       }
@@ -120,21 +148,19 @@ pipeline {
     }
     success {
       script {
-        echo 'Build passed, setting PR status SUCCESS'
         setGitHubPullRequestStatus(
           state: 'SUCCESS',
-          context: 'ghaf-pre-merge-pipeline',
-          message: 'Build passed',
+          context: "${JOB_BASE_NAME}",
+          message: "Build #${BUILD_NUMBER} passed in ${currentBuild.durationString}",
         )
       }
     }
     unsuccessful {
       script {
-        echo 'Build failed, setting PR status FAILURE'
         setGitHubPullRequestStatus(
           state: 'FAILURE',
-          context: 'ghaf-pre-merge-pipeline',
-          message: 'Build failed',
+          context: "${JOB_BASE_NAME}",
+          message: "Build #${BUILD_NUMBER} failed in ${currentBuild.durationString}",
         )
       }
     }
