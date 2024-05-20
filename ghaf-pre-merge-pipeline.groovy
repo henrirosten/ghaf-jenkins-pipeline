@@ -26,7 +26,7 @@ def set_result() {
 ////////////////////////////////////////////////////////////////////////////////
 
 properties([
-  githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/henrirosten/ghaf/'),
+  githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/tiiuae/ghaf/'),
   // The following options are documented in:
   // https://www.jenkins.io/doc/pipeline/steps/params/pipelinetriggers/
   // Following config requires having github token configured in:
@@ -79,7 +79,7 @@ pipeline {
           // https://github.com/KostyaSha/github-integration-plugin/blob/master/docs/Configuration.adoc
           checkout scmGit(
             userRemoteConfigs: [[
-              url: 'https://github.com/henrirosten/ghaf.git',
+              url: 'https://github.com/tiiuae/ghaf.git',
               name: 'pr_origin',
               // Below, we set two git remotes: 'pr_origin' and 'origin'
               // We use '/merge' in pr_origin to build the PR as if it was
