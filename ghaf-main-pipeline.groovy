@@ -46,27 +46,23 @@ pipeline {
         }
       }
     }
-    stage("Build") {
-      parallel {
-        stage('x86_64') {
-          steps {
-            dir('ghaf') {
-              nix_build('.#packages.x86_64-linux.nvidia-jetson-orin-agx-debug-from-x86_64')
-              nix_build('.#packages.x86_64-linux.nvidia-jetson-orin-nx-debug-from-x86_64')
-              nix_build('.#packages.x86_64-linux.lenovo-x1-carbon-gen11-debug')
-              nix_build('.#packages.riscv64-linux.microchip-icicle-kit-debug')
-              nix_build('.#packages.x86_64-linux.doc')
-            }
-          }
+    stage('Build x86_64') {
+      steps {
+        dir('ghaf') {
+          nix_build('.#packages.x86_64-linux.nvidia-jetson-orin-agx-debug-from-x86_64')
+          nix_build('.#packages.x86_64-linux.nvidia-jetson-orin-nx-debug-from-x86_64')
+          nix_build('.#packages.x86_64-linux.lenovo-x1-carbon-gen11-debug')
+          nix_build('.#packages.riscv64-linux.microchip-icicle-kit-debug')
+          nix_build('.#packages.x86_64-linux.doc')
         }
-        stage('aarch64') {
-          steps {
-            dir('ghaf') {
-              nix_build('.#packages.aarch64-linux.nvidia-jetson-orin-agx-debug')
-              nix_build('.#packages.aarch64-linux.nvidia-jetson-orin-nx-debug')
-              nix_build('.#packages.aarch64-linux.doc')
-            }
-          }
+      }
+    }
+    stage('Build aarch64') {
+      steps {
+        dir('ghaf') {
+          nix_build('.#packages.aarch64-linux.nvidia-jetson-orin-agx-debug')
+          nix_build('.#packages.aarch64-linux.nvidia-jetson-orin-nx-debug')
+          nix_build('.#packages.aarch64-linux.doc')
         }
       }
     }
