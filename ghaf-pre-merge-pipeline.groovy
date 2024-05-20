@@ -80,13 +80,17 @@ pipeline {
           checkout scmGit(
             userRemoteConfigs: [[
               url: 'https://github.com/henrirosten/ghaf.git',
-              name: 'origin',
-              // We use '/merge' to build the PR as if it was merged to
-              // GITHUB_PR_TARGET_BRANCH. To build the PR head (without merge)
-              // you would replace '/merge' with '/head'
-              refspec: '+refs/pull/${GITHUB_PR_NUMBER}/merge:refs/remotes/origin/pull/${GITHUB_PR_NUMBER}/merge',
+              name: 'pr_origin',
+              // Below, we set two git remotes: 'pr_origin' and 'origin'
+              // We use '/merge' in pr_origin to build the PR as if it was
+              // merged to the PR target branch GITHUB_PR_TARGET_BRANCH.
+              // To build the PR head (without merge) you would replace
+              // '/merge' with '/head' in the pr_origin remote. We also
+              // need to set the 'origin' remote to be able to compare
+              // the PR changes against the correct target.
+              refspec: '+refs/pull/${GITHUB_PR_NUMBER}/merge:refs/remotes/pr_origin/pull/${GITHUB_PR_NUMBER}/merge +refs/heads/*:refs/remotes/origin/*',
             ]],
-            branches: [[name: 'origin/pull/${GITHUB_PR_NUMBER}/merge']],
+            branches: [[name: 'pr_origin/pull/${GITHUB_PR_NUMBER}/merge']],
             extensions: [
               cleanBeforeCheckout(),
               // We use the 'changelogToBranch' extension to correctly
@@ -102,6 +106,8 @@ pipeline {
               )
             ],
           )
+          sh 'git show-ref'
+          sh 'git remote show'
         }
       }
     }
