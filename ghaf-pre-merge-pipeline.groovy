@@ -10,15 +10,9 @@ def nix_build(flakeref) {
   try {
     sh "nix build ${flakeref}"
   } catch (Exception e) {
-    // If the command fails, mark the current step unstable, but don't fail
-    // (interrupt) the pipeline execution
-    unstable("nix build FAILED: ${flakeref}")
-  }
-}
-
-def set_result() {
-  if(currentBuild.result == "UNSTABLE") {
-    // Fail the build if any step has set the unstable status
+    // If the command fails, mark the current step unstable and set the
+    // final build result to failed, but continue the pipeline execution.
+    unstable("FAILED: ${flakeref}")
     currentBuild.result = "FAILURE"
   }
 }
@@ -32,7 +26,7 @@ properties([
   // Following config requires having github token configured in:
   // 'Manage Jenkins' > 'System' > 'Github' > 'GitHub Server' > 'Credentials'.
   // Token needs to be 'classic' with 'repo' scope to be able to both set the
-  // commit statuses and read commit author organization.
+  // commit statuses and read the commit author organization.
   // 'HEAVY_HOOKS' requires webhooks configured properly in the target
   // github repository. If webhooks cannot be used, consider using polling by
   // replacing 'HEAVY_HOOKS' with 'CRON' and declaring the poll intervall in
@@ -62,7 +56,7 @@ pipeline {
   stages {
     stage('Checkenv') {
       steps {
-        sh 'set | grep -P "(GITHUB_PR|BUILD_|JOB_)"'
+        sh 'set | grep -P "(GITHUB_PR_)"'
         // Fail if this build was not triggered by a PR
         sh 'if [ -z "$GITHUB_PR_NUMBER" ]; then exit 1; fi'
         sh 'if [ -z "$GITHUB_PR_TARGET_BRANCH" ]; then exit 1; fi'
@@ -106,8 +100,6 @@ pipeline {
               )
             ],
           )
-          sh 'git show-ref'
-          sh 'git remote show'
         }
       }
     }
@@ -145,9 +137,6 @@ pipeline {
     }
   }
   post {
-    always {
-      set_result()
-    }
     success {
       script {
         setGitHubPullRequestStatus(
